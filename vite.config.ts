@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  // 👇 aggiungi questa riga:
   base: mode === "production" ? "/feedback-fort/" : "/",
   server: {
     host: "::",

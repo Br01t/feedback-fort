@@ -46,20 +46,66 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-  // Sample data for charts
-  const satisfactionData = [
-    { name: 'Molto Soddisfatto', value: 45 },
-    { name: 'Soddisfatto', value: 30 },
-    { name: 'Neutrale', value: 15 },
-    { name: 'Insoddisfatto', value: 10 },
-  ];
+  // Calcola statistiche reali dai dati
+  const calculateStats = () => {
+    if (responses.length === 0) return { satisfactionData: [], departmentData: [] };
 
-  const departmentData = [
-    { department: 'IT', score: 85 },
-    { department: 'HR', score: 78 },
-    { department: 'Vendite', score: 92 },
-    { department: 'Marketing', score: 88 },
-  ];
+    // Conta le risposte per valutazione complessiva (q7)
+    const satisfactionCounts: Record<string, number> = {};
+    responses.forEach(r => {
+      const val = r.answers?.q7;
+      if (val) satisfactionCounts[val] = (satisfactionCounts[val] || 0) + 1;
+    });
+
+    const satisfactionData = Object.entries(satisfactionCounts).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Calcola punteggi per reparto (basato sul nome del valutato in q1)
+    const departmentScores: Record<string, { total: number; count: number }> = {};
+    responses.forEach(r => {
+      const dept = r.answers?.q1 || 'Non specificato';
+      const score = calculateScore(r.answers);
+      if (!departmentScores[dept]) {
+        departmentScores[dept] = { total: 0, count: 0 };
+      }
+      departmentScores[dept].total += score;
+      departmentScores[dept].count += 1;
+    });
+
+    const departmentData = Object.entries(departmentScores).map(([department, data]) => ({
+      department,
+      score: Math.round(data.total / data.count)
+    }));
+
+    return { satisfactionData, departmentData };
+  };
+
+  const calculateScore = (answers: any) => {
+    if (!answers) return 0;
+    const scoreMap: Record<string, number> = {
+      'Eccellente': 100, 'Ottimo': 100,
+      'Buono': 75, 'Quasi sempre': 75, 'Soddisfatto': 75,
+      'Sufficiente': 50, 'Qualche ritardo': 50, 'Neutrale': 50,
+      'Insufficiente': 25, 'Scarso': 25, 'Spesso in ritardo': 25, 'Insoddisfatto': 25,
+      'Sempre puntuale': 100, 'Molto soddisfatto': 100
+    };
+    
+    let total = 0;
+    let count = 0;
+    ['q2', 'q3', 'q4', 'q7'].forEach(key => {
+      if (answers[key] && scoreMap[answers[key]]) {
+        total += scoreMap[answers[key]];
+        count++;
+      }
+    });
+    return count > 0 ? total / count : 0;
+  };
+
+  const { satisfactionData, departmentData } = calculateStats();
+
+  const completionRate = responses.length > 0 ? 87 : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/5">
@@ -109,7 +155,7 @@ const Dashboard = () => {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">87%</div>
+              <div className="text-2xl font-bold">{completionRate}%</div>
               <p className="text-xs text-muted-foreground">Percentuale completamento</p>
             </CardContent>
           </Card>
@@ -137,54 +183,69 @@ const Dashboard = () => {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Soddisfazione Generale</CardTitle>
-              <CardDescription>Distribuzione delle risposte</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={satisfactionData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {satisfactionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {responses.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {satisfactionData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Soddisfazione Generale</CardTitle>
+                  <CardDescription>Distribuzione delle risposte</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={satisfactionData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {satisfactionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
 
+            {departmentData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Performance per Reparto/Lavoratore</CardTitle>
+                  <CardDescription>Punteggio medio</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={departmentData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="department" />
+                      <YAxis domain={[0, 100]} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="score" fill="hsl(var(--primary))" name="Punteggio" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
           <Card>
-            <CardHeader>
-              <CardTitle>Performance per Reparto</CardTitle>
-              <CardDescription>Punteggio medio per dipartimento</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={departmentData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="department" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="score" fill="hsl(var(--primary))" name="Punteggio" />
-                </BarChart>
-              </ResponsiveContainer>
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground mb-4">Nessun dato disponibile ancora</p>
+              <Button onClick={() => navigate('/compile')}>
+                Compila il primo questionario
+              </Button>
             </CardContent>
           </Card>
-        </div>
+        )}
       </main>
     </div>
   );

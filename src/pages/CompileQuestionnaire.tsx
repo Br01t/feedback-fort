@@ -157,31 +157,34 @@ const CompileQuestionnaire: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/5">
-      <header className="bg-card border-b sticky top-0 z-50 backdrop-blur-sm bg-card/95">
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
+      <header className="bg-card/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-md">
         <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
             Torna alla Dashboard
           </Button>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>POSTAZIONE DI LAVORO CON VIDEOTERMINALE</CardTitle>
-            <CardDescription>Check list di valutazione della conformità</CardDescription>
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
+        <Card className="shadow-xl border-2">
+          <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 border-b">
+            <CardTitle className="text-2xl">POSTAZIONE DI LAVORO CON VIDEOTERMINALE</CardTitle>
+            <CardDescription className="text-base">Check list di valutazione della conformità - Compila tutti i campi richiesti</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {Object.keys(sections).map(sectionKey => (
-                <section key={sectionKey} className="mb-6">
-                  <h3 className="text-sm font-semibold mb-3">{sectionKey}</h3>
+                <section key={sectionKey} className="mb-8">
+                  <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-primary/20">
+                    <div className="h-8 w-1 bg-gradient-to-b from-primary to-primary-glow rounded-full" />
+                    <h3 className="text-lg font-bold text-foreground">{sectionKey}</h3>
+                  </div>
 
                   <div className="space-y-4">
                     {sections[sectionKey].map((q: typeof questions[number]) => (
-                      <div key={q.id} className="p-3 border rounded-md bg-white">
+                      <div key={q.id} className="p-4 border-2 rounded-lg bg-card hover:border-primary/30 transition-colors shadow-sm">
                         <Label className="font-semibold">{q.question}</Label>
 
                         {q.type === 'text' && (
@@ -240,14 +243,14 @@ const CompileQuestionnaire: React.FC = () => {
                 </section>
               ))}
 
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1" size="lg" disabled={submitting}>
-                  <Send className="mr-2 h-4 w-4" />
+              <div className="flex gap-3 pt-4">
+                <Button type="submit" variant="gradient" className="flex-1" size="lg" disabled={submitting}>
+                  <Send className="mr-2 h-5 w-5" />
                   {submitting ? 'Invio in corso...' : 'Invia Questionario'}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => {
-                  // quick reset
+                <Button type="button" variant="outline" size="lg" onClick={() => {
                   setAnswers({});
+                  toast({ title: 'Form resettato', description: 'Tutte le risposte sono state cancellate' });
                 }}>
                   Reset
                 </Button>

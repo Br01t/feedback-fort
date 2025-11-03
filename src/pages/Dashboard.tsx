@@ -196,75 +196,110 @@ const Dashboard = () => {
   }, [responses]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/5">
-      {/* Header */}
-      <header className="bg-card border-b sticky top-0 z-50 backdrop-blur-sm bg-card/95">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">FeedbackApp</h1>
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
+      <header className="border-b bg-card/80 backdrop-blur-md shadow-md sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-5 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-primary-glow">
+              <ClipboardList className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Dashboard Questionari</h1>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
+            </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" />
             Esci
           </Button>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Risposte Totali</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card 
+            className="hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 hover:-translate-y-1 group" 
+            onClick={() => navigate('/compile')}
+          >
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <PenSquare className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle className="text-xl">Nuovo Questionario</CardTitle>
+              </div>
+              <CardDescription className="text-base">Compila un nuovo questionario di valutazione VDT</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{responses.length}</div>
+          </Card>
+          
+          <Card 
+            className="hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 hover:-translate-y-1 group" 
+            onClick={() => navigate('/analysis')}
+          >
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle className="text-xl">Analisi Dati</CardTitle>
+              </div>
+              <CardDescription className="text-base">Visualizza statistiche e analisi dettagliate dei dati raccolti</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-l-4 border-l-primary shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-xs font-medium uppercase tracking-wide">Risposte Totali</CardDescription>
+                <Users className="h-5 w-5 text-primary/50" />
+              </div>
+              <CardTitle className="text-4xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+                {responses.length}
+              </CardTitle>
               <p className="text-xs text-muted-foreground">Questionari completati</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Questionari Attivi</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">1</div>
+          </Card>
+          
+          <Card className="border-l-4 border-l-accent shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardDescription className="text-xs font-medium uppercase tracking-wide">Questionari Attivi</CardDescription>
+                <FileText className="h-5 w-5 text-accent/50" />
+              </div>
+              <CardTitle className="text-4xl font-bold text-accent">1</CardTitle>
               <p className="text-xs text-muted-foreground">Attualmente disponibile</p>
-            </CardContent>
+            </CardHeader>
           </Card>
         </div>
 
-        {/* 🔹 Nuovi pulsanti in alto */}
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={() => navigate("/compile")} className="flex items-center gap-2">
-            <PenSquare className="h-4 w-4" />
-            Compila nuovo questionario
-          </Button>
-          <Button onClick={() => navigate("/analysis")} variant="secondary" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analisi risposte
-          </Button>
-        </div>
-
-        {/* Analisi Generali per domanda */}
+        {/* Analisi Generali */}
         {responses.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <p className="text-muted-foreground mb-4">Nessun dato disponibile al momento</p>
-              <Button onClick={() => navigate("/compile")}>Compila il primo questionario</Button>
+          <Card className="shadow-lg border-2">
+            <CardContent className="py-16 text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="p-4 rounded-full bg-muted">
+                  <FileText className="h-12 w-12 text-muted-foreground" />
+                </div>
+              </div>
+              <p className="text-lg text-muted-foreground">Nessun dato disponibile al momento</p>
+              <Button onClick={() => navigate("/compile")} variant="gradient" size="lg">
+                <PenSquare className="mr-2 h-5 w-5" />
+                Compila il primo questionario
+              </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {satisfactionData.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Soddisfazione Generale</CardTitle>
-                    <CardDescription>Distribuzione delle risposte</CardDescription>
+                <Card className="shadow-lg border-2">
+                  <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-transparent">
+                    <CardTitle className="text-xl">Soddisfazione Generale</CardTitle>
+                    <CardDescription>Distribuzione delle risposte per livello di soddisfazione</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={260}>
@@ -288,10 +323,10 @@ const Dashboard = () => {
                 </Card>
               )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Punteggio Medio Generale</CardTitle>
-                  <CardDescription>Valutazione complessiva (0-100)</CardDescription>
+              <Card className="shadow-lg border-2">
+                <CardHeader className="border-b bg-gradient-to-r from-accent/5 to-transparent">
+                  <CardTitle className="text-xl">Punteggio Medio Generale</CardTitle>
+                  <CardDescription>Valutazione complessiva su scala 0-100</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div style={{ height: 260 }}>
@@ -311,16 +346,20 @@ const Dashboard = () => {
               </Card>
             </div>
 
-            <h2 className="text-2xl font-bold">Distribuzione per domanda</h2>
+            <div className="flex items-center gap-3 pt-4">
+              <div className="h-1 flex-1 bg-gradient-to-r from-primary to-primary-glow rounded-full" />
+              <h2 className="text-2xl font-bold">Distribuzione per Domanda</h2>
+              <div className="h-1 flex-1 bg-gradient-to-l from-primary to-primary-glow rounded-full" />
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {groupedByQuestion
                 .filter((q) => q.total > 0)
                 .map((q) => (
-                  <Card key={q.id}>
-                    <CardHeader>
-                      <CardTitle>{q.label}</CardTitle>
-                      <CardDescription>{q.total} risposte</CardDescription>
+                  <Card key={q.id} className="shadow-md border hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3 space-y-1">
+                      <CardTitle className="text-base leading-tight">{q.label}</CardTitle>
+                      <CardDescription className="text-xs">{q.total} risposte totali</CardDescription>
                     </CardHeader>
                     <CardContent>
                       {q.data.length === 0 ? (

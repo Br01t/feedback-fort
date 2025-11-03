@@ -39,16 +39,22 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <ClipboardList className="h-8 w-8 text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/5 p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent opacity-50" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-accent/20 via-transparent to-transparent opacity-50" />
+      
+      <Card className="w-full max-w-md relative z-10 border-2 shadow-xl backdrop-blur-sm bg-card/95">
+        <CardHeader className="space-y-3 text-center pb-6">
+          <div className="flex justify-center mb-2">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-primary to-primary-glow shadow-lg">
+              <ClipboardList className="h-10 w-10 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">FeedbackApp</CardTitle>
-          <CardDescription>Sistema di gestione questionari</CardDescription>
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+            FeedbackApp
+          </CardTitle>
+          <CardDescription className="text-base">Sistema di gestione e analisi questionari</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
@@ -79,7 +85,7 @@ const Login = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" variant="gradient" size="lg" className="w-full">
                   Accedi
                 </Button>
               </form>
@@ -108,7 +114,7 @@ const Login = () => {
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" variant="gradient" size="lg" className="w-full">
                   Crea Account
                 </Button>
               </form>

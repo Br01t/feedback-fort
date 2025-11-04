@@ -225,7 +225,7 @@ export default function Analysis() {
               </TabsContent>
 
               <TabsContent value="traReparti" className="mt-8">
-                <RepartiComparison filteredResponses={filteredResponses} />
+                <RepartiComparison />
               </TabsContent>
             </Tabs>
           </CardContent>

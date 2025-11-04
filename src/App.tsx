@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import CompileQuestionnaire from "./pages/CompileQuestionnaire";
 import Guide from "./pages/Guide";
 import Analysis from "./pages/Analysis";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/compile" element={<CompileQuestionnaire />} />
             <Route path="/analysis" element={<Analysis />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="/guide" element={<Guide />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

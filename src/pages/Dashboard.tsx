@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   BarChart,
   Bar,
@@ -30,7 +31,7 @@ import {
 } from "recharts";
 import { collection, query, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { ClipboardList, FileText, LogOut, Users, PenSquare, BarChart3 } from "lucide-react";
+import { ClipboardList, FileText, LogOut, Users, PenSquare, BarChart3, Shield, Building2 } from "lucide-react";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -95,10 +96,11 @@ const FULL_QUESTIONS: { id: string; label: string }[] = [
 ];
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, userProfile, isSuperAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
+  const [companyName, setCompanyName] = useState<string>('');
 
   useEffect(() => {
     if (!user) {
@@ -106,7 +108,22 @@ const Dashboard = () => {
       return;
     }
     loadResponses();
+    loadCompanyName();
   }, [user, navigate]);
+
+  const loadCompanyName = async () => {
+    if (userProfile?.companyId) {
+      try {
+        const companyDoc = await getDocs(query(collection(db, 'companies')));
+        const company = companyDoc.docs.find(doc => doc.id === userProfile.companyId);
+        if (company) {
+          setCompanyName(company.data().name);
+        }
+      } catch (error) {
+        console.error('Errore caricamento company:', error);
+      }
+    }
+  };
 
   const loadResponses = async () => {
     setLoading(true);
@@ -208,14 +225,38 @@ const Dashboard = () => {
               </div>
             </div>
             <div>
-              <h1 className="text-xl font-bold leading-tight">QuestHub</h1>
+              <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                <h1 className="text-xl font-bold leading-tight">QuestHub</h1>
+                {isSuperAdmin && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Shield className="h-3 w-3" />
+                    Super Admin
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground break-all">
                 {user?.email}
               </p>
+              {companyName && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5 justify-center sm:justify-start">
+                  <Building2 className="h-3 w-3" />
+                  {companyName}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex justify-center sm:justify-end">
+          <div className="flex gap-2 justify-center sm:justify-end flex-wrap">
+            {isSuperAdmin && (
+              <Button
+                variant="default"
+                onClick={() => navigate("/admin")}
+                className="gap-2 w-full sm:w-auto"
+              >
+                <Shield className="h-4 w-4" />
+                Gestione Admin
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleLogout}

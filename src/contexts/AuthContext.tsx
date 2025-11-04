@@ -1,11 +1,15 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { UserRole, UserProfile } from '@/types/user';
 
 interface AuthContextType {
   user: User | null;
+  userProfile: UserProfile | null;
   loading: boolean;
+  isSuperAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -15,12 +19,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      
+      if (user) {
+        // Carica il profilo utente da Firestore
+        const profileRef = doc(db, 'userProfiles', user.uid);
+        const profileSnap = await getDoc(profileRef);
+        
+        if (profileSnap.exists()) {
+          setUserProfile(profileSnap.data() as UserProfile);
+        } else {
+          setUserProfile(null);
+        }
+      } else {
+        setUserProfile(null);
+      }
+      
       setLoading(false);
     });
 
@@ -46,7 +66,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (email: string, password: string) => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Crea il profilo utente con ruolo 'user' di default
+      const userProfileData: UserProfile = {
+        userId: userCredential.user.uid,
+        email: userCredential.user.email || email,
+        role: 'user',
+        createdAt: new Date(),
+      };
+      
+      await setDoc(doc(db, 'userProfiles', userCredential.user.uid), userProfileData);
+      
       toast({
         title: "Registrazione completata",
         description: "Account creato con successo!",
@@ -78,8 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isSuperAdmin = userProfile?.role === 'super_admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, isSuperAdmin, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

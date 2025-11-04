@@ -230,7 +230,8 @@ const Dashboard = () => {
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Nuovo Questionario */}
           <Card 
             className="hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 hover:-translate-y-1 group" 
             onClick={() => navigate('/compile')}
@@ -245,7 +246,8 @@ const Dashboard = () => {
               <CardDescription className="text-base">Compila un nuovo questionario di valutazione VDT</CardDescription>
             </CardHeader>
           </Card>
-          
+
+          {/* Analisi Dati */}
           <Card 
             className="hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 hover:-translate-y-1 group" 
             onClick={() => navigate('/analysis')}
@@ -258,6 +260,22 @@ const Dashboard = () => {
                 <CardTitle className="text-xl">Analisi Dati</CardTitle>
               </div>
               <CardDescription className="text-base">Visualizza statistiche e analisi dettagliate dei dati raccolti</CardDescription>
+            </CardHeader>
+          </Card>
+
+          {/* Guida / FAQ */}
+          <Card 
+            className="hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 hover:-translate-y-1 group" 
+            onClick={() => navigate('/guide')}
+          >
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle className="text-xl">Guida / FAQ</CardTitle>
+              </div>
+              <CardDescription className="text-base">Scopri come usare l'app e visualizza le FAQ</CardDescription>
             </CardHeader>
           </Card>
         </div>

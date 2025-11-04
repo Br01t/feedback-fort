@@ -479,46 +479,24 @@ const Admin = () => {
                               {userProfile.role === 'super_admin' ? 'Rimuovi Admin' : 'Rendi Admin'}
                             </Button>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label className="text-xs">Assegna Azienda</Label>
-                              <Select
-                                value={userProfile.companyId || ''}
-                                onValueChange={(value) => assignCompanyToUser(userProfile.userId, value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Nessuna azienda" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="">Nessuna azienda</SelectItem>
-                                  {companies.map((company) => (
-                                    <SelectItem key={company.id} value={company.id}>
-                                      {company.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs">Assegna Sede</Label>
-                              <Select
-                                value={userProfile.siteId || ''}
-                                onValueChange={(value) => assignSiteToUser(userProfile.userId, value)}
-                                disabled={!userProfile.companyId}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder={userProfile.companyId ? "Nessuna sede" : "Seleziona prima un'azienda"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="">Nessuna sede</SelectItem>
-                                  {userCompanySites.map((site) => (
-                                    <SelectItem key={site.id} value={site.id}>
-                                      {site.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Assegna Azienda</Label>
+                            <Select
+                              value={userProfile.companyId || 'none'}
+                              onValueChange={(value) => assignCompanyToUser(userProfile.userId, value === 'none' ? '' : value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Nessuna azienda" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nessuna azienda</SelectItem>
+                                {companies.map((company) => (
+                                  <SelectItem key={company.id} value={company.id}>
+                                    {company.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                       );

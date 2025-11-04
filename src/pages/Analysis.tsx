@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import WorkerAnalysis from "./WorkerAnalysis";
 import RepartoAnalysis from "./RepartoAnalysis";
+import RepartiComparison from "./RepartiComparison";
 
 type AnswerValue = string | number | boolean | string[] | null | undefined;
 
@@ -206,6 +207,7 @@ export default function Analysis() {
               <TabsList className="grid grid-cols-2 gap-2 w-full md:w-1/2">
                 <TabsTrigger value="workers">Per Lavoratore</TabsTrigger>
                 <TabsTrigger value="reparti">Per Reparto</TabsTrigger>
+                <TabsTrigger value="traReparti">Tra Reparti</TabsTrigger>
               </TabsList>
 
               <TabsContent value="workers" className="mt-8">
@@ -220,6 +222,10 @@ export default function Analysis() {
                   dateFrom={dateFrom}
                   dateTo={dateTo}
                 />
+              </TabsContent>
+
+              <TabsContent value="traReparti" className="mt-8">
+                <RepartiComparison filteredResponses={filteredResponses} />
               </TabsContent>
             </Tabs>
           </CardContent>

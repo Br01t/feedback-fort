@@ -90,118 +90,136 @@ const FULL_QUESTIONS: { id: string; label: string }[] = [
   { id: "foto_postazione", label: "Foto della postazione (URL/nota)" },
 ];
 
+const SECTION_TITLES: Record<string, string> = {
+  meta_nome: "INTESTAZIONE",
+  "1.1": "1) ORGANIZZAZIONE DEL LAVORO",
+  "2.1": "2) MICROCLIMA",
+  "3.1": "3) ILLUMINAZIONE",
+  "4.1": "4) RUMORE",
+  "5.1": "5) AMBIENTE DI LAVORO",
+  "6.1": "6) PIANO DI LAVORO",
+  "7.1": "7) SEDILE DI LAVORO",
+  "8.1": "8) SCHERMO",
+  "9.1": "9) TASTIERA E DISPOSITIVI DI INPUT",
+  "10.1": "10) SOFTWARE",
+};
+
 interface RepartoAnalysisProps {
   filteredResponses: ResponseDoc[];
   dateFrom?: Date;
   dateTo?: Date;
 }
 
-export default function RepartoAnalysis({ filteredResponses, dateFrom, dateTo }: RepartoAnalysisProps) {
+export default function RepartoAnalysis({
+  filteredResponses,
+  dateFrom,
+  dateTo,
+}: RepartoAnalysisProps) {
   const [selectedReparto, setSelectedReparto] = useState<string>("all");
   const [openReparto, setOpenReparto] = useState(false);
 
   const reparti = useMemo(
-    () => Array.from(new Set(filteredResponses.map((r) => r.answers?.meta_reparto).filter(Boolean))).sort(),
+    () =>
+      Array.from(
+        new Set(
+          filteredResponses.map((r) => r.answers?.meta_reparto).filter(Boolean)
+        )
+      ).sort(),
     [filteredResponses]
   );
 
   const responsesByReparto = useMemo(() => {
     if (selectedReparto === "all") return [];
-    return filteredResponses.filter((r) => r.answers?.meta_reparto === selectedReparto);
+    return filteredResponses.filter(
+      (r) => r.answers?.meta_reparto === selectedReparto
+    );
   }, [filteredResponses, selectedReparto]);
 
-  const answersGroupedByQuestion = useMemo(() => {
-    if (selectedReparto === "all") return {};
-    const grouped: Record<string, { lavoratore: string; value: string | number | boolean | string[] }[]> = {};
-    responsesByReparto.forEach((r) => {
-      FULL_QUESTIONS.forEach((q) => {
-        const value = r.answers?.[q.id];
-        if (value !== undefined && value !== null && value !== "") {
-          if (!grouped[q.id]) grouped[q.id] = [];
-          grouped[q.id].push({
-            lavoratore: String(r.answers?.meta_nome) || "Sconosciuto",
-            value,
-          });
-        }
-      });
-    });
-    return grouped;
-  }, [responsesByReparto, selectedReparto]);
+  const dates = responsesByReparto.map((r) =>
+    r.createdAt?.toDate()
+      ? format(r.createdAt.toDate(), "dd/MM/yyyy HH:mm")
+      : "N/D"
+  );
 
-  const renderAnswer = (val: string | number | boolean | string[] | undefined | null) => {
-    if (val === undefined || val === null || val === "") return <span className="text-muted-foreground">—</span>;
-    if (Array.isArray(val)) return <span>{val.join(", ")}</span>;
-    return <span>{String(val)}</span>;
+  const workers = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          responsesByReparto
+            .map((r) => String(r.answers?.meta_nome))
+            .filter((n) => n && n !== "undefined" && n !== "null")
+        )
+      ).sort(),
+    [responsesByReparto]
+  );
+
+  const renderAnswer = (val: AnswerValue) => {
+    if (val === undefined || val === null || val === "") return "—";
+    if (Array.isArray(val)) return val.join(", ");
+    return String(val);
   };
 
+  // 🔹 PDF generation aligned with WorkerAnalysis style
   const generatePDF = () => {
-    const doc = new jsPDF();
-    const title = selectedReparto === "all"
-      ? "Analisi per reparto (tutti)"
-      : `Analisi per reparto: ${selectedReparto}`;
+    if (selectedReparto === "all" || responsesByReparto.length === 0) return;
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const marginLeft = 14;
 
     doc.setFontSize(16);
-    doc.text("Report Analisi VDT", 14, 20);
-    doc.setFontSize(12);
-    doc.text(title, 14, 30);
+    doc.text(`Report reparto: ${selectedReparto}`, marginLeft, 20);
+    doc.setFontSize(11);
+    doc.text(`Date compilazioni: ${dates.join(", ")}`, marginLeft, 28);
 
-    if (dateFrom || dateTo) {
-      doc.setFontSize(10);
-      doc.text(
-        `Periodo: ${dateFrom ? format(dateFrom, "dd/MM/yyyy") : "..."} → ${
-          dateTo ? format(dateTo, "dd/MM/yyyy") : "..."
-        }`,
-        14,
-        38
+    const body: string[][] = [];
+    let currentSection = "";
+
+    FULL_QUESTIONS.forEach((q) => {
+      const sectionTitle =
+        Object.entries(SECTION_TITLES).find(([id]) => q.id === id)?.[1];
+      if (sectionTitle && sectionTitle !== currentSection) {
+        currentSection = sectionTitle;
+        body.push([sectionTitle, ...Array(workers.length).fill("")]);
+      }
+
+      const answers = responsesByReparto.map((r) =>
+        renderAnswer(r.answers?.[q.id])
       );
-    }
+      if (answers.every((a) => a === "—")) return;
+      body.push([q.label, ...answers]);
+    });
 
-    let y = 45;
-
-    if (selectedReparto === "all") {
-      doc.text("Seleziona un reparto per esportare i dati.", 14, y);
-    } else {
-      FULL_QUESTIONS.forEach((q) => {
-        const answers = answersGroupedByQuestion[q.id] || [];
-        if (answers.length === 0) return;
-
-        doc.setFontSize(11);
-        doc.text(q.label, 14, y);
-        y += 4;
-
-        const tableData = answers.map((a) => [
-          a.lavoratore,
-          Array.isArray(a.value) ? a.value.join(", ") : String(a.value),
-        ]);
-
-        autoTable(doc, {
-          startY: y,
-          head: [["Lavoratore", "Risposta"]],
-          body: tableData,
-          theme: "striped",
-          styles: { fontSize: 8, cellPadding: 2 },
-          columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 100 } },
-        });
-
-        y = ((doc as unknown) as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
-        if (y > 270) doc.addPage();
-      });
-    }
+    autoTable(doc, {
+      startY: 35,
+      head: [["Domanda", ...workers]],
+      body,
+      theme: "striped",
+      styles: { fontSize: 8, cellPadding: 2 },
+      didParseCell: (data) => {
+        if (body[data.row.index][0] === currentSection) {
+          data.cell.styles.fillColor = [230, 230, 230];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
 
     doc.setFontSize(8);
     doc.text(
       `Generato il ${format(new Date(), "dd/MM/yyyy HH:mm")}`,
-      14,
+      marginLeft,
       290
     );
 
     doc.save(
-      `report_reparto_${new Date().toISOString().slice(0, 10)}.pdf`
+      `report_reparto_${selectedReparto}_${new Date()
+        .toISOString()
+        .slice(0, 10)}.pdf`
     );
   };
 
   return (
     <div className="space-y-6">
+      {/* Pulsante PDF */}
       <div className="flex justify-end mb-4">
         <Button
           variant="default"
@@ -214,7 +232,8 @@ export default function RepartoAnalysis({ filteredResponses, dateFrom, dateTo }:
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 bg-accent/5 rounded-lg border w-full">
+      {/* Selettore reparto */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 bg-accent/5 rounded-lg border">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Search className="h-5 w-5 text-primary shrink-0" />
           <Popover open={openReparto} onOpenChange={setOpenReparto}>
@@ -254,15 +273,17 @@ export default function RepartoAnalysis({ filteredResponses, dateFrom, dateTo }:
                       <CommandItem
                         key={String(r)}
                         value={String(r)}
-                        onSelect={(currentValue) => {
-                          setSelectedReparto(currentValue);
+                        onSelect={(v) => {
+                          setSelectedReparto(v);
                           setOpenReparto(false);
                         }}
                       >
                         <Check
                           className={cn(
                             "mr-2 h-4 w-4",
-                            selectedReparto === String(r) ? "opacity-100" : "opacity-0"
+                            selectedReparto === String(r)
+                              ? "opacity-100"
+                              : "opacity-0"
                           )}
                         />
                         {String(r)}
@@ -276,35 +297,91 @@ export default function RepartoAnalysis({ filteredResponses, dateFrom, dateTo }:
         </div>
       </div>
 
+      {/* Tabella comparativa */}
       {selectedReparto === "all" ? (
         <Card className="shadow-md">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Seleziona un reparto per vedere i dettagli.</p>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Seleziona un reparto per visualizzare il report.
           </CardContent>
         </Card>
       ) : (
-        FULL_QUESTIONS.map((q) => {
-          const answers = answersGroupedByQuestion[q.id] || [];
-          if (answers.length === 0) return null;
-          return (
-            <Card key={q.id} className="shadow-lg border-2">
-              <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
-                <CardTitle className="text-lg">{q.label}</CardTitle>
-                <CardDescription>Risposte nel reparto {selectedReparto}</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4 overflow-x-hidden px-2 sm:px-4">
-                <div className="space-y-2">
-                  {answers.map((a, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 border-b last:border-0 hover:bg-accent/5 transition-colors rounded break-words text-wrap">
-                      <div className="font-medium text-sm">{a.lavoratore}</div>
-                      <div className="text-sm text-muted-foreground max-w-full break-all">{renderAnswer(a.value)}</div>
-                    </div>
+        <Card className="shadow-lg border-2">
+          <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b">
+            <CardTitle>{selectedReparto}</CardTitle>
+            <CardDescription>
+              Confronto risposte dei lavoratori nel reparto
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 overflow-x-auto">
+            <table className="min-w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-accent/30 border-b">
+                  <th className="text-left p-2 border-r font-semibold w-1/3">
+                    Domanda
+                  </th>
+                  {workers.map((w) => (
+                    <th
+                      key={w}
+                      className="text-center p-2 border-r font-semibold"
+                    >
+                      {w}
+                    </th>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  let currentSection = "";
+                  const rows: JSX.Element[] = [];
+                  FULL_QUESTIONS.forEach((q) => {
+                    const sectionTitle =
+                      Object.entries(SECTION_TITLES).find(([id]) => q.id === id)
+                        ?.[1];
+                    if (sectionTitle && sectionTitle !== currentSection) {
+                      currentSection = sectionTitle;
+                      rows.push(
+                        <tr
+                          key={`section-${currentSection}`}
+                          className="bg-gray-200 text-left border-t-4 border-gray-300"
+                        >
+                          <td
+                            colSpan={workers.length + 1}
+                            className="p-2 font-semibold text-gray-800 uppercase tracking-wide"
+                          >
+                            {currentSection}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const answers = responsesByReparto.map((r) =>
+                      renderAnswer(r.answers?.[q.id])
+                    );
+
+                    if (answers.every((a) => a === "—")) return;
+
+                    rows.push(
+                      <tr key={q.id} className="border-b hover:bg-accent/10">
+                        <td className="p-2 border-r align-top font-medium">
+                          {q.label}
+                        </td>
+                        {answers.map((a, idx) => (
+                          <td
+                            key={idx + q.id}
+                            className="p-2 text-center border-r align-top"
+                          >
+                            {a}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  });
+                  return rows;
+                })()}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

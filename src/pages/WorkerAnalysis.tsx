@@ -140,40 +140,95 @@ export default function WorkerAnalysis({ filteredResponses }: WorkerAnalysisProp
     return new Set(values).size > 1;
   };
 
-  // 🔹 Esporta PDF
+  // 🔹 Esporta PDF strutturato a sezioni
   const generatePDF = () => {
-    if (selectedWorker === "all" || responsesByWorker.length === 0) return;
+  if (selectedWorker === "all" || responsesByWorker.length === 0) return;
 
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const marginLeft = 14;
 
-    doc.setFontSize(16);
-    doc.text(`Report questionari: ${selectedWorker}`, 14, 20);
-    doc.setFontSize(11);
-    doc.text(`Date compilazioni: ${dates.join(", ")}`, 14, 28);
+  doc.setFontSize(16);
+  doc.text(`Report questionari: ${selectedWorker}`, marginLeft, 20);
+  doc.setFontSize(11);
+  doc.text(`Date compilazioni: ${dates.join(", ")}`, marginLeft, 28);
 
-    const body = FULL_QUESTIONS.map((q) => {
-      const answers = responsesByWorker.map((r) => renderAnswer(r.answers?.[q.id]));
-      return [q.label, ...answers];
-    });
-
-    autoTable(doc, {
-      startY: 35,
-      head: [["Domanda", ...dates]],
-      body,
-      styles: { fontSize: 8, cellPadding: 2 },
-      theme: "striped",
-      didParseCell: (data) => {
-        const q = FULL_QUESTIONS[data.row.index];
-        if (hasDifferentAnswers(q.id) && data.section === "body") {
-          data.cell.styles.fillColor = [255, 255, 180];
-        }
-      },
-    });
-
-    doc.setFontSize(8);
-    doc.text(`Generato il ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 14, 290);
-    doc.save(`report_${selectedWorker}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  const SECTION_TITLES: Record<string, string> = {
+    meta_nome: "INTESTAZIONE",
+    "1.1": "1) ORGANIZZAZIONE DEL LAVORO",
+    "2.1": "2) MICROCLIMA",
+    "3.1": "3) ILLUMINAZIONE",
+    "4.1": "4) RUMORE",
+    "5.1": "5) AMBIENTE DI LAVORO",
+    "6.1": "6) PIANO DI LAVORO",
+    "7.1": "7) SEDILE DI LAVORO",
+    "8.1": "8) SCHERMO",
+    "9.1": "9) TASTIERA E DISPOSITIVI DI INPUT",
+    "10.1": "10) SOFTWARE",
   };
+
+  // 🔹 Ogni riga del body conterrà anche un "questionId" per riferimento
+  type RowCell = string | { content: string; colSpan?: number; styles?: Record<string, unknown> };
+  const body: { row: RowCell[]; questionId?: string; isSectionHeader?: boolean }[] = [];
+  let currentSection = "";
+
+  FULL_QUESTIONS.forEach((q) => {
+    const sectionTitle = Object.entries(SECTION_TITLES).find(([id]) => q.id === id)?.[1];
+    if (sectionTitle && sectionTitle !== currentSection) {
+      currentSection = sectionTitle;
+      body.push({
+        row: [
+          {
+            content: sectionTitle,
+            colSpan: responsesByWorker.length + 1,
+            styles: {
+              halign: "left",
+              fillColor: [230, 230, 230],
+              fontStyle: "bold",
+            },
+          },
+        ],
+        isSectionHeader: true,
+      });
+    }
+
+    const answers = responsesByWorker.map((r) => renderAnswer(r.answers?.[q.id]));
+    body.push({ row: [q.label, ...answers], questionId: q.id });
+  });
+
+  autoTable(doc, {
+    startY: 35,
+    head: [["Domanda", ...dates]],
+    body: body.map((b) => b.row),
+    theme: "striped",
+    styles: { fontSize: 8, cellPadding: 2 },
+    didParseCell: (data) => {
+      const rowMeta = body[data.row.index];
+      if (!rowMeta) return;
+
+      // 🔸 Intestazioni di sezione → grigio chiaro fisso
+      if (rowMeta.isSectionHeader) {
+        data.cell.styles.fillColor = [230, 230, 230];
+        data.cell.styles.fontStyle = "bold";
+        return;
+      }
+
+      // 🔸 Evidenziazione differenze solo per domande reali
+      if (
+        rowMeta.questionId &&
+        hasDifferentAnswers(rowMeta.questionId) &&
+        data.section === "body"
+      ) {
+        data.cell.styles.fillColor = [255, 255, 180];
+      }
+    },
+  });
+
+  doc.setFontSize(8);
+  doc.text(`Generato il ${format(new Date(), "dd/MM/yyyy HH:mm")}`, marginLeft, 290);
+  doc.save(`report_${selectedWorker}_${new Date().toISOString().slice(0, 10)}.pdf`);
+};
+
+
 
   return (
     <div className="space-y-6">
@@ -273,25 +328,64 @@ export default function WorkerAnalysis({ filteredResponses }: WorkerAnalysisProp
                 </tr>
               </thead>
               <tbody>
-                {FULL_QUESTIONS.map((q) => {
-                  const changed = hasDifferentAnswers(q.id);
-                  return (
-                    <tr
-                      key={q.id}
-                      className={cn(
-                        "border-b hover:bg-accent/10",
-                        changed ? "bg-yellow-100/70" : ""
-                      )}
-                    >
-                      <td className="p-2 border-r align-top font-medium">{q.label}</td>
-                      {responsesByWorker.map((resp) => (
-                        <td key={resp.id + q.id} className="p-2 text-center border-r align-top">
-                          {renderAnswer(resp.answers?.[q.id])}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
+                {(() => {
+                  const SECTION_TITLES: Record<string, string> = {
+                    meta_nome: "INTESTAZIONE",
+                    "1.1": "1) ORGANIZZAZIONE DEL LAVORO",
+                    "2.1": "2) MICROCLIMA",
+                    "3.1": "3) ILLUMINAZIONE",
+                    "4.1": "4) RUMORE",
+                    "5.1": "5) AMBIENTE DI LAVORO",
+                    "6.1": "6) PIANO DI LAVORO",
+                    "7.1": "7) SEDILE DI LAVORO",
+                    "8.1": "8) SCHERMO",
+                    "9.1": "9) TASTIERA E DISPOSITIVI DI INPUT",
+                    "10.1": "10) SOFTWARE",
+                  };
+
+                  let currentSection = "";
+                  const rows: JSX.Element[] = [];
+
+                  FULL_QUESTIONS.forEach((q) => {
+                    const sectionTitle = Object.entries(SECTION_TITLES).find(([id]) => q.id === id)?.[1];
+                    if (sectionTitle && sectionTitle !== currentSection) {
+                      currentSection = sectionTitle;
+                      rows.push(
+                        <tr
+                          key={`section-${currentSection}`}
+                          className="bg-gray-200 text-left border-t-4 border-gray-300"
+                        >
+                          <td
+                            colSpan={responsesByWorker.length + 1}
+                            className="p-2 font-semibold text-gray-800 uppercase tracking-wide"
+                          >
+                            {currentSection}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const changed = hasDifferentAnswers(q.id);
+                    rows.push(
+                      <tr
+                        key={q.id}
+                        className={cn(
+                          "border-b hover:bg-accent/10",
+                          changed ? "bg-yellow-100/70" : ""
+                        )}
+                      >
+                        <td className="p-2 border-r align-top font-medium">{q.label}</td>
+                        {responsesByWorker.map((resp) => (
+                          <td key={resp.id + q.id} className="p-2 text-center border-r align-top">
+                            {renderAnswer(resp.answers?.[q.id])}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  });
+
+                  return rows;
+                })()}
               </tbody>
             </table>
           </CardContent>

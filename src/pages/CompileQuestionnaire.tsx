@@ -11,6 +11,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Send } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 type AnswerMap = Record<string, string | boolean | string[]>;
 
@@ -37,9 +38,9 @@ const questions: Question[] = [
   { id: '1.4_note', section: '1) ORGANIZZAZIONE DEL LAVORO', type: 'text', question: 'Necessità di intervento (eventuale)' },
 
   // 2 MICROCLIMA
-  { id: '2.1', section: '2) MICROCLIMA', type: 'radio', question: 'Modalità per il ricambio d’aria dell’ambiente', options: ['naturale', 'artificiale'] },
-  { id: '2.2', section: '2) MICROCLIMA', type: 'radio', question: 'Possibilità di regolare la temperatura dell’ambiente', options: ['presente', 'non presente'] },
-  { id: '2.3', section: '2) MICROCLIMA', type: 'radio', question: 'Possibilità di regolare l’umidità dell’ambiente', options: ['presente', 'non presente'] },
+  { id: '2.1', section: '2) MICROCLIMA', type: 'radio', question: "Modalità per il ricambio d'aria dell'ambiente", options: ['naturale', 'artificiale'] },
+  { id: '2.2', section: '2) MICROCLIMA', type: 'radio', question: "Possibilità di regolare la temperatura dell'ambiente", options: ['presente', 'non presente'] },
+  { id: '2.3', section: '2) MICROCLIMA', type: 'radio', question: "Possibilità di regolare l'umidità dell'ambiente", options: ['presente', 'non presente'] },
   { id: '2.4', section: '2) MICROCLIMA', type: 'radio', question: 'Le attrezzature in dotazione producono eccesso di calore che comporta discomfort termico', options: ['SI', 'NO'] },
   { id: '2.4_note', section: '2) MICROCLIMA', type: 'text', question: 'Necessità di intervento (eventuale)' },
 
@@ -52,7 +53,7 @@ const questions: Question[] = [
 
   // 4 RUMORE AMBIENTALE
   { id: '4.1', section: '4) RUMORE AMBIENTALE', type: 'text', question: 'Eventuale misura (dB(A))' },
-  { id: '4.2', section: '4) RUMORE AMBIENTALE', type: 'radio', question: 'Può disturbare l’attenzione e la comunicazione verbale', options: ['SI', 'NO'] },
+  { id: '4.2', section: '4) RUMORE AMBIENTALE', type: 'radio', question: "Può disturbare l'attenzione e la comunicazione verbale", options: ['SI', 'NO'] },
   { id: '4_note', section: '4) RUMORE AMBIENTALE', type: 'text', question: 'Necessità di intervento (eventuale)' },
 
   // 5 SPAZIO
@@ -106,6 +107,7 @@ const CompileQuestionnaire: React.FC = () => {
 
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const setValue = (id: string, value: string | boolean | string[]) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
@@ -120,78 +122,124 @@ const CompileQuestionnaire: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // minimal validation: requested that header fields are filled
-    if (!answers['meta_nome']) {
-      toast({ variant: 'destructive', title: 'Attenzione', description: 'Inserisci il nome del valutato' });
-      return;
+  // 🧩 VALIDAZIONE
+  const validateForm = (): boolean => {
+    for (const q of questions) {
+      if (q.type !== 'text' && !answers[q.id]) {
+        toast({
+          variant: 'destructive',
+          title: 'Attenzione',
+          description: `Rispondi alla domanda: "${q.question}" nella sezione "${q.section}"`,
+        });
+        return false;
+      }
     }
+    if (!answers['meta_nome']) {
+      toast({
+        variant: 'destructive',
+        title: 'Attenzione',
+        description: 'Inserisci il nome del valutato',
+      });
+      return false;
+    }
+    return true;
+  };
 
+  // 🚀 PRIMO CLICK SU INVIA: mostra anteprima
+  const handlePreview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateForm()) {
+      setShowPreview(true);
+    }
+  };
+
+  // ✅ CONFERMA INVIO DEFINITIVO - Include TUTTE le domande
+  const handleSubmitConfirmed = async () => {
     setSubmitting(true);
     try {
+      // Crea un oggetto con TUTTE le domande, anche quelle non risposte
+      const completeAnswers: AnswerMap = {};
+      
+      questions.forEach(q => {
+        if (answers[q.id] !== undefined && answers[q.id] !== null) {
+          // Se la risposta esiste, usala
+          completeAnswers[q.id] = answers[q.id];
+        } else {
+          // Se non esiste, aggiungi un valore vuoto appropriato
+          if (q.type === 'checkbox-multi') {
+            completeAnswers[q.id] = [];
+          } else {
+            completeAnswers[q.id] = '';
+          }
+        }
+      });
+
       await addDoc(collection(db, 'responses'), {
         userId: user?.uid ?? null,
         userEmail: user?.email ?? null,
         formId: 'checklist_vdt_v1',
-        answers,
-        createdAt: serverTimestamp()
+        answers: completeAnswers, // Usa completeAnswers invece di answers
+        createdAt: serverTimestamp(),
       });
 
-      toast({ title: 'Questionario inviato!', description: 'Grazie per aver completato la checklist' });
+      toast({
+        title: 'Questionario inviato!',
+        description: 'Grazie per aver completato la checklist',
+      });
       navigate('/dashboard');
     } catch (err) {
       console.error('submit err', err);
-      toast({ variant: 'destructive', title: 'Errore', description: 'Errore durante l\'invio' });
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: "Errore durante l'invio",
+      });
     } finally {
       setSubmitting(false);
+      setShowPreview(false);
     }
   };
 
-  // group questions by section for display
+  // Raggruppa domande per sezione
   const sections: Record<string, (typeof questions[number])[]> = {};
   questions.forEach(q => {
     if (!sections[q.section]) sections[q.section] = [];
     sections[q.section].push(q);
   });
 
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-        <header className="border-b bg-card/80 backdrop-blur-md shadow-md sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-center sm:text-left">
-              <div className="flex justify-center sm:justify-start">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-primary-glow">
-                  <Send className="h-6 w-6 text-white" />
-                </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
+      {/* HEADER */}
+      <header className="border-b bg-card/80 backdrop-blur-md shadow-md sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-center sm:text-left">
+            <div className="flex justify-center sm:justify-start">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-primary-glow">
+                <Send className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold leading-tight">
-                Compilazione Checklist VDT
-              </h1>
             </div>
-
-            <div className="flex justify-center sm:justify-end">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/dashboard')}
-                className="gap-2 w-full sm:w-auto"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Dashboard
-              </Button>
-            </div>
+            <h1 className="text-xl font-bold leading-tight">Compilazione Checklist VDT</h1>
           </div>
-        </header>
 
+          <div className="flex justify-center sm:justify-end">
+            <Button variant="outline" onClick={() => navigate('/dashboard')} className="gap-2 w-full sm:w-auto">
+              <ArrowLeft className="h-4 w-4" /> Dashboard
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN */}
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         <Card className="shadow-xl border-2">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 border-b">
             <CardTitle className="text-2xl">POSTAZIONE DI LAVORO CON VIDEOTERMINALE</CardTitle>
-            <CardDescription className="text-base">Check list di valutazione della conformità - Compila tutti i campi richiesti</CardDescription>
+            <CardDescription className="text-base">
+              Check list di valutazione della conformità - Compila tutti i campi richiesti
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handlePreview} className="space-y-6">
               {Object.keys(sections).map(sectionKey => (
                 <section key={sectionKey} className="mb-8">
                   <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-primary/20">
@@ -200,22 +248,28 @@ const CompileQuestionnaire: React.FC = () => {
                   </div>
 
                   <div className="space-y-4">
-                    {sections[sectionKey].map((q: typeof questions[number]) => (
+                    {sections[sectionKey].map(q => (
                       <div key={q.id} className="p-4 border-2 rounded-lg bg-card hover:border-primary/30 transition-colors shadow-sm">
                         <Label className="font-semibold">{q.question}</Label>
 
                         {q.type === 'text' && (
-                          <Input value={(answers[q.id] as string) || ''} onChange={(e) => setValue(q.id, e.target.value)} className="mt-2" />
+                          <Input
+                            value={(answers[q.id] as string) || ''}
+                            onChange={e => setValue(q.id, e.target.value)}
+                            className="mt-2"
+                          />
                         )}
 
                         {q.type === 'select' && q.options && (
                           <div className="mt-2 flex gap-2">
-                            {q.options.map((opt: string) => (
+                            {q.options.map(opt => (
                               <button
                                 type="button"
                                 key={opt}
                                 onClick={() => setValue(q.id, opt)}
-                                className={`px-3 py-1 rounded border ${answers[q.id] === opt ? 'bg-indigo-600 text-white' : 'bg-white'}`}
+                                className={`px-3 py-1 rounded border ${
+                                  answers[q.id] === opt ? 'bg-indigo-600 text-white' : 'bg-white'
+                                }`}
                               >
                                 {opt}
                               </button>
@@ -225,11 +279,16 @@ const CompileQuestionnaire: React.FC = () => {
 
                         {q.type === 'radio' && q.options && (
                           <div className="mt-2 space-y-2">
-                            <RadioGroup value={(answers[q.id] as string) || ''} onValueChange={(v) => setValue(q.id, v)}>
-                              {q.options.map((opt: string) => (
+                            <RadioGroup
+                              value={(answers[q.id] as string) || ''}
+                              onValueChange={v => setValue(q.id, v)}
+                            >
+                              {q.options.map(opt => (
                                 <div key={opt} className="flex items-center space-x-2">
                                   <RadioGroupItem value={opt} id={`${q.id}-${opt}`} />
-                                  <Label htmlFor={`${q.id}-${opt}`} className="cursor-pointer">{opt}</Label>
+                                  <Label htmlFor={`${q.id}-${opt}`} className="cursor-pointer">
+                                    {opt}
+                                  </Label>
                                 </div>
                               ))}
                             </RadioGroup>
@@ -238,12 +297,19 @@ const CompileQuestionnaire: React.FC = () => {
 
                         {q.type === 'checkbox-multi' && q.options && (
                           <div className="mt-2 space-y-2">
-                            {q.options.map((opt: string) => {
+                            {q.options.map(opt => {
                               const checked = ((answers[q.id] as string[]) || []).includes(opt);
                               return (
                                 <div key={opt} className="flex items-center space-x-2">
-                                  <input type="checkbox" checked={checked} onChange={() => toggleMulti(q.id, opt)} id={`${q.id}-${opt}`} />
-                                  <Label htmlFor={`${q.id}-${opt}`} className="cursor-pointer">{opt}</Label>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleMulti(q.id, opt)}
+                                    id={`${q.id}-${opt}`}
+                                  />
+                                  <Label htmlFor={`${q.id}-${opt}`} className="cursor-pointer">
+                                    {opt}
+                                  </Label>
                                 </div>
                               );
                             })}
@@ -251,9 +317,13 @@ const CompileQuestionnaire: React.FC = () => {
                         )}
 
                         {q.type === 'textarea' && (
-                          <Textarea value={(answers[q.id] as string) || ''} onChange={(e) => setValue(q.id, e.target.value)} rows={4} className="mt-2" />
+                          <Textarea
+                            value={(answers[q.id] as string) || ''}
+                            onChange={e => setValue(q.id, e.target.value)}
+                            rows={4}
+                            className="mt-2"
+                          />
                         )}
-
                       </div>
                     ))}
                   </div>
@@ -265,10 +335,15 @@ const CompileQuestionnaire: React.FC = () => {
                   <Send className="mr-2 h-5 w-5" />
                   {submitting ? 'Invio in corso...' : 'Invia Questionario'}
                 </Button>
-                <Button type="button" variant="outline" size="lg" onClick={() => {
-                  setAnswers({});
-                  toast({ title: 'Form resettato', description: 'Tutte le risposte sono state cancellate' });
-                }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    setAnswers({});
+                    toast({ title: 'Form resettato', description: 'Tutte le risposte sono state cancellate' });
+                  }}
+                >
                   Reset
                 </Button>
               </div>
@@ -276,6 +351,44 @@ const CompileQuestionnaire: React.FC = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* 🔍 PREVIEW MODAL */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Conferma le risposte prima dell'invio</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {Object.keys(sections).map(sectionKey => (
+              <div key={sectionKey}>
+                <h4 className="font-bold text-primary mt-4 mb-2">{sectionKey}</h4>
+                <div className="space-y-2">
+                  {sections[sectionKey].map(q => (
+                    <div key={q.id}>
+                      <p className="font-semibold">{q.question}</p>
+                      <p className="text-muted-foreground text-sm">
+                        {Array.isArray(answers[q.id])
+                          ? (answers[q.id] as string[]).join(', ') || '—'
+                          : answers[q.id] || '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setShowPreview(false)}>
+              Torna indietro
+            </Button>
+            <Button onClick={handleSubmitConfirmed} disabled={submitting}>
+              {submitting ? 'Invio in corso...' : 'Conferma e invia'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

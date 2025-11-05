@@ -7,15 +7,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { collection, addDoc, serverTimestamp, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Send, Building2, MapPin } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type AnswerMap = Record<string, string | boolean | string[]>;
+
+type Company = {
+  id: string;
+  name: string;
+};
+
+type CompanySite = {
+  id: string;
+  name: string;
+  companyId: string;
+};
 
 type Question = {
   id: string;
@@ -90,21 +102,57 @@ const CompileQuestionnaire: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [companyName, setCompanyName] = useState<string>('');
   const [siteName, setSiteName] = useState<string>('');
+  
+  // Dialog per selezione azienda/sede
+  const [showSelectDialog, setShowSelectDialog] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [sites, setSites] = useState<CompanySite[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
+  const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
-    loadCompanyAndSite();
+    checkAndLoadCompanyData();
   }, [userProfile]);
 
-  const loadCompanyAndSite = async () => {
-    if (!userProfile?.companyId || !userProfile?.siteId) return;
-    
+  const checkAndLoadCompanyData = async () => {
+    // Se l'utente ha già azienda e sede assegnate
+    if (userProfile?.companyId && userProfile?.siteId) {
+      setSelectedCompanyId(userProfile.companyId);
+      setSelectedSiteId(userProfile.siteId);
+      await loadCompanyAndSite(userProfile.companyId, userProfile.siteId);
+    } else {
+      // Altrimenti, mostra il dialog di selezione
+      await loadCompaniesAndSites();
+      setShowSelectDialog(true);
+    }
+  };
+
+  const loadCompaniesAndSites = async () => {
+    setLoadingData(true);
     try {
-      const companyDoc = await getDoc(doc(db, 'companies', userProfile.companyId));
+      const companiesSnap = await getDocs(collection(db, 'companies'));
+      const companiesData = companiesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as Company[];
+      setCompanies(companiesData);
+
+      const sitesSnap = await getDocs(collection(db, 'companySites'));
+      const sitesData = sitesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as CompanySite[];
+      setSites(sitesData);
+    } catch (err) {
+      console.error('load companies/sites', err);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const loadCompanyAndSite = async (companyId: string, siteId: string) => {
+    try {
+      const companyDoc = await getDoc(doc(db, 'companies', companyId));
       if (companyDoc.exists()) {
         setCompanyName(companyDoc.data().name || 'N/D');
       }
 
-      const siteDoc = await getDoc(doc(db, 'companySites', userProfile.siteId));
+      const siteDoc = await getDoc(doc(db, 'companySites', siteId));
       if (siteDoc.exists()) {
         setSiteName(siteDoc.data().name || 'N/D');
       }
@@ -112,6 +160,22 @@ const CompileQuestionnaire: React.FC = () => {
       console.error('load company/site', err);
     }
   };
+
+  const handleConfirmSelection = async () => {
+    if (!selectedCompanyId || !selectedSiteId) {
+      toast({
+        variant: 'destructive',
+        title: 'Attenzione',
+        description: 'Seleziona sia azienda che sede per procedere',
+      });
+      return;
+    }
+
+    await loadCompanyAndSite(selectedCompanyId, selectedSiteId);
+    setShowSelectDialog(false);
+  };
+
+  const filteredSites = sites.filter((s) => s.companyId === selectedCompanyId);
 
   const setValue = (id: string, value: string | boolean | string[]) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
@@ -166,8 +230,8 @@ const CompileQuestionnaire: React.FC = () => {
       await addDoc(collection(db, 'responses'), {
         userId: user?.uid ?? null,
         userEmail: user?.email ?? null,
-        companyId: userProfile?.companyId ?? null,
-        siteId: userProfile?.siteId ?? null,
+        companyId: selectedCompanyId,
+        siteId: selectedSiteId,
         formId: 'checklist_vdt_v1',
         answers: completeAnswers,
         createdAt: serverTimestamp(),
@@ -230,7 +294,7 @@ const CompileQuestionnaire: React.FC = () => {
 
       <main className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
         {/* Info Azienda e Sede */}
-        {userProfile?.companyId && userProfile?.siteId && (
+        {selectedCompanyId && selectedSiteId && (
           <Alert className="bg-gradient-to-r from-primary/5 to-accent/5 border-2 border-primary/20">
             <AlertDescription>
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -419,6 +483,67 @@ const CompileQuestionnaire: React.FC = () => {
             </Button>
             <Button onClick={handleSubmitConfirmed} disabled={submitting}>
               {submitting ? 'Invio in corso...' : 'Conferma e invia'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog selezione azienda e sede */}
+      <Dialog open={showSelectDialog} onOpenChange={setShowSelectDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Seleziona Azienda e Sede</DialogTitle>
+            <DialogDescription>
+              Prima di compilare il questionario, specifica per quale azienda e sede stai lavorando.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="company">Azienda</Label>
+              <Select value={selectedCompanyId} onValueChange={(value) => {
+                setSelectedCompanyId(value);
+                setSelectedSiteId(''); // Reset sede quando cambia azienda
+              }}>
+                <SelectTrigger id="company">
+                  <SelectValue placeholder="Seleziona azienda..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="site">Sede</Label>
+              <Select 
+                value={selectedSiteId} 
+                onValueChange={setSelectedSiteId}
+                disabled={!selectedCompanyId}
+              >
+                <SelectTrigger id="site">
+                  <SelectValue placeholder={selectedCompanyId ? "Seleziona sede..." : "Prima seleziona un'azienda"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredSites.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleConfirmSelection}
+              disabled={!selectedCompanyId || !selectedSiteId || loadingData}
+              className="w-full"
+            >
+              Conferma e Procedi
             </Button>
           </DialogFooter>
         </DialogContent>

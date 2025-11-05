@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import WorkerAnalysis from "./WorkerAnalysis";
 import RepartoAnalysis from "./RepartoAnalysis";
 import RepartiComparison from "./RepartiComparison";
+import SiteAnalysis from "./SiteAnalysis";
+import CompanyAnalysis from "./CompanyAnalysis";
 
 type AnswerValue = string | number | boolean | string[] | null | undefined;
 
@@ -41,7 +43,7 @@ export default function Analysis() {
   const [responses, setResponses] = useState<ResponseDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [tab, setTab] = useState<"workers" | "reparti">("workers");
+  const [tab, setTab] = useState<"workers" | "reparti" | "sedi" | "aziende" | "traReparti">("workers");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
 
@@ -203,10 +205,12 @@ export default function Analysis() {
             <CardDescription>Scegli come visualizzare i dati raccolti</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 overflow-x-hidden px-2 sm:px-4">
-            <Tabs value={tab} onValueChange={(v: "workers" | "reparti") => setTab(v)}>
-              <TabsList className="grid grid-cols-3 gap-2 w-full md:w-1/2">
+            <Tabs value={tab} onValueChange={(v: "workers" | "reparti" | "sedi" | "aziende" | "traReparti") => setTab(v)}>
+              <TabsList className="grid grid-cols-5 gap-2 w-full">
                 <TabsTrigger value="workers">Per Lavoratore</TabsTrigger>
                 <TabsTrigger value="reparti">Per Reparto</TabsTrigger>
+                <TabsTrigger value="sedi">Per Sede</TabsTrigger>
+                <TabsTrigger value="aziende">Per Azienda</TabsTrigger>
                 <TabsTrigger value="traReparti">Tra Reparti</TabsTrigger>
               </TabsList>
 
@@ -221,6 +225,18 @@ export default function Analysis() {
                   filteredResponses={filteredResponses}
                   dateFrom={dateFrom}
                   dateTo={dateTo}
+                />
+              </TabsContent>
+
+              <TabsContent value="sedi" className="mt-8">
+                <SiteAnalysis 
+                  filteredResponses={filteredResponses}
+                />
+              </TabsContent>
+
+              <TabsContent value="aziende" className="mt-8">
+                <CompanyAnalysis 
+                  filteredResponses={filteredResponses}
                 />
               </TabsContent>
 

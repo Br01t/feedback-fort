@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, Building2, MapPin } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type AnswerMap = Record<string, string | boolean | string[]>;
 
@@ -87,6 +88,30 @@ const CompileQuestionnaire: React.FC = () => {
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitting, setSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [companyName, setCompanyName] = useState<string>('');
+  const [siteName, setSiteName] = useState<string>('');
+
+  useEffect(() => {
+    loadCompanyAndSite();
+  }, [userProfile]);
+
+  const loadCompanyAndSite = async () => {
+    if (!userProfile?.companyId || !userProfile?.siteId) return;
+    
+    try {
+      const companyDoc = await getDoc(doc(db, 'companies', userProfile.companyId));
+      if (companyDoc.exists()) {
+        setCompanyName(companyDoc.data().name || 'N/D');
+      }
+
+      const siteDoc = await getDoc(doc(db, 'companySites', userProfile.siteId));
+      if (siteDoc.exists()) {
+        setSiteName(siteDoc.data().name || 'N/D');
+      }
+    } catch (err) {
+      console.error('load company/site', err);
+    }
+  };
 
   const setValue = (id: string, value: string | boolean | string[]) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
@@ -203,7 +228,27 @@ const CompileQuestionnaire: React.FC = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
+      <main className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
+        {/* Info Azienda e Sede */}
+        {userProfile?.companyId && userProfile?.siteId && (
+          <Alert className="bg-gradient-to-r from-primary/5 to-accent/5 border-2 border-primary/20">
+            <AlertDescription>
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">Azienda:</span>
+                  <span className="text-muted-foreground">{companyName || 'Caricamento...'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">Sede:</span>
+                  <span className="text-muted-foreground">{siteName || 'Caricamento...'}</span>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card className="shadow-xl border-2">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 border-b">
             <CardTitle className="text-2xl">POSTAZIONE DI LAVORO CON VIDEOTERMINALE</CardTitle>

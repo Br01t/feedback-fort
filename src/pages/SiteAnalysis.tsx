@@ -117,9 +117,11 @@ const SECTION_TITLES: Record<string, string> = {
 
 interface SiteAnalysisProps {
   filteredResponses: ResponseDoc[];
+  userProfile: any;
+  isSuperAdmin: boolean;
 }
 
-export default function SiteAnalysis({ filteredResponses }: SiteAnalysisProps) {
+export default function SiteAnalysis({ filteredResponses, userProfile, isSuperAdmin }: SiteAnalysisProps) {
   const [selectedSite, setSelectedSite] = useState<string>("all");
   const [openSite, setOpenSite] = useState(false);
   const [sites, setSites] = useState<CompanySite[]>([]);
@@ -134,7 +136,17 @@ export default function SiteAnalysis({ filteredResponses }: SiteAnalysisProps) {
     try {
       const q = query(collection(db, "companySites"));
       const snap = await getDocs(q);
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CompanySite[];
+      let data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CompanySite[];
+      
+      // Filtra le sedi in base ai permessi utente
+      if (!isSuperAdmin && userProfile) {
+        if (userProfile.siteIds && userProfile.siteIds.length > 0) {
+          data = data.filter(site => userProfile.siteIds.includes(site.id));
+        } else if (userProfile.siteId) {
+          data = data.filter(site => site.id === userProfile.siteId);
+        }
+      }
+      
       setSites(data);
     } catch (err) {
       console.error("load sites", err);

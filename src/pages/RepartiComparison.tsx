@@ -95,29 +95,26 @@ const questions: Question[] = [
   { id: 'foto_postazione', section: 'Fine', type: 'text', question: 'Foto della postazione (URL o nota)' }
 ] as const;
 
+type AnswerValue = string | number | boolean | string[] | null | undefined;
+
 interface Response {
   id: string;
-  answers?: {
-    [key: string]: string | string[] | null;
-    meta_reparto?: string;
-  };
+  createdAt?: { toDate: () => Date };
+  answers?: Record<string, AnswerValue>;
+  companyId?: string | null;
+  siteId?: string | null;
+  userEmail?: string | null;
+  userId?: string | null;
 }
 
-const RepartiComparison = () => {
-  const [responses, setResponses] = useState<Response[]>([]);
-  const { user } = useAuth();
-  const navigate = useNavigate();
+interface RepartiComparisonProps {
+  filteredResponses: Response[];
+}
 
-  useEffect(() => {
-    if (!user) { navigate("/login"); return; }
-    const loadResponses = async () => {
-      const snap = await getDocs(collection(db, "responses"));
-      setResponses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    };
-    loadResponses();
-  }, [user, navigate]);
+const RepartiComparison = ({ filteredResponses }: RepartiComparisonProps) => {
+  const responses = filteredResponses;
 
-  const reparti = useMemo(() => Array.from(new Set(responses.map(r => r.answers?.meta_reparto).filter(Boolean))).sort(), [responses]);
+  const reparti = useMemo(() => Array.from(new Set(responses.map(r => String(r.answers?.meta_reparto)).filter(n => n && n !== 'undefined' && n !== 'null'))).sort(), [responses]);
 
   const chartsData = useMemo(() => {
     return questions.map(q => {
@@ -139,13 +136,13 @@ const RepartiComparison = () => {
         const row: any = { risposta: bucket };
         reparti.forEach(rep => {
           const count = responses.filter(r => {
-            if (r.answers?.meta_reparto !== rep) return false;
+            if (String(r.answers?.meta_reparto) !== String(rep)) return false;
             const val = r.answers?.[q.id];
             if (val === undefined || val === null) return false;
-            const vals = Array.isArray(val) ? val : [val];
+            const vals = Array.isArray(val) ? val.map(String) : [String(val)];
             return vals.includes(bucket);
           }).length;
-          row[rep] = count;
+          row[String(rep)] = count;
         });
         return row;
       });

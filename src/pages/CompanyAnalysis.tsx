@@ -115,10 +115,14 @@ const SECTION_TITLES: Record<string, string> = {
 
 interface CompanyAnalysisProps {
   filteredResponses: ResponseDoc[];
+  userProfile: any;
+  isSuperAdmin: boolean;
 }
 
 export default function CompanyAnalysis({
   filteredResponses,
+  userProfile,
+  isSuperAdmin,
 }: CompanyAnalysisProps) {
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [openCompany, setOpenCompany] = useState(false);
@@ -134,7 +138,13 @@ export default function CompanyAnalysis({
     try {
       const q = query(collection(db, "companies"));
       const snap = await getDocs(q);
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Company[];
+      let data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Company[];
+      
+      // Filtra le aziende in base ai permessi utente
+      if (!isSuperAdmin && userProfile?.companyId) {
+        data = data.filter(company => company.id === userProfile.companyId);
+      }
+      
       setCompanies(data);
     } catch (err) {
       console.error("load companies", err);

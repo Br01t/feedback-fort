@@ -243,6 +243,8 @@ export default function Analysis() {
               <TabsContent value="workers" className="mt-8">
                 <WorkerAnalysis 
                   filteredResponses={filteredResponses}
+                  userProfile={userProfile}
+                  isSuperAdmin={isSuperAdmin}
                 />
               </TabsContent>
 
@@ -257,17 +259,23 @@ export default function Analysis() {
               <TabsContent value="sedi" className="mt-8">
                 <SiteAnalysis 
                   filteredResponses={filteredResponses}
+                  userProfile={userProfile}
+                  isSuperAdmin={isSuperAdmin}
                 />
               </TabsContent>
 
               <TabsContent value="aziende" className="mt-8">
                 <CompanyAnalysis 
                   filteredResponses={filteredResponses}
+                  userProfile={userProfile}
+                  isSuperAdmin={isSuperAdmin}
                 />
               </TabsContent>
 
               <TabsContent value="traReparti" className="mt-8">
-                <RepartiComparison />
+                <RepartiComparison 
+                  filteredResponses={filteredResponses}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>

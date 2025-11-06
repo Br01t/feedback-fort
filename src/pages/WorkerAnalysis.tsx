@@ -32,10 +32,14 @@ type ResponseDoc = {
   id: string;
   createdAt?: { toDate: () => Date };
   answers?: Record<string, AnswerValue>;
+  companyId?: string | null;
+  siteId?: string | null;
 };
 
 interface WorkerAnalysisProps {
   filteredResponses: ResponseDoc[];
+  userProfile: any;
+  isSuperAdmin: boolean;
 }
 
 const FULL_QUESTIONS: { id: string; label: string }[] = [
@@ -92,7 +96,7 @@ const FULL_QUESTIONS: { id: string; label: string }[] = [
   { id: "foto_postazione", label: "Foto della postazione (URL/nota)" },
 ];
 
-export default function WorkerAnalysis({ filteredResponses }: WorkerAnalysisProps) {
+export default function WorkerAnalysis({ filteredResponses, userProfile, isSuperAdmin }: WorkerAnalysisProps) {
   const [selectedWorker, setSelectedWorker] = useState<string>("all");
   const [openWorker, setOpenWorker] = useState(false);
 

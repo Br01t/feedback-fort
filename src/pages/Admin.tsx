@@ -122,7 +122,7 @@ const Admin = () => {
 
       // Load users
       const usersSnap = await getDocs(collection(db, "userProfiles"));
-      setUsers(usersSnap.docs.map((doc) => ({ ...doc.data() } as UserProfile)));
+      setUsers(usersSnap.docs.map((doc) => ({         userId: doc.id, ...doc.data() } as UserProfile)));
     } catch (error) {
       console.error("Errore caricamento dati:", error);
       toast({

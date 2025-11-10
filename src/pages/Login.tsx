@@ -4,13 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ClipboardList } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ClipboardList, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { user, login, signup } = useAuth();
   const navigate = useNavigate();
 
@@ -22,25 +25,61 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+    
     try {
       await login(email, password);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      setError(getErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+    
     try {
       await signup(email, password);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error);
+      setError(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getErrorMessage = (error: any): string => {
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        return 'Questa email è già registrata. Prova ad accedere.';
+      case 'auth/invalid-email':
+        return 'Email non valida.';
+      case 'auth/operation-not-allowed':
+        return 'Operazione non consentita.';
+      case 'auth/weak-password':
+        return 'La password deve contenere almeno 6 caratteri.';
+      case 'auth/user-disabled':
+        return 'Questo account è stato disabilitato.';
+      case 'auth/user-not-found':
+        return 'Nessun account trovato con questa email.';
+      case 'auth/wrong-password':
+        return 'Password errata.';
+      case 'auth/invalid-credential':
+        return 'Credenziali non valide. Controlla email e password.';
+      case 'auth/too-many-requests':
+        return 'Troppi tentativi falliti. Riprova più tardi.';
+      default:
+        return error.message || 'Si è verificato un errore. Riprova.';
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/5 p-4 relative overflow-hidden">
-      {/* Decorative background elements */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent opacity-50" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-accent/20 via-transparent to-transparent opacity-50" />
       
@@ -57,6 +96,13 @@ const Login = () => {
           <CardDescription className="text-base">Sistema di gestione e analisi questionari</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
@@ -73,6 +119,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -83,10 +130,17 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
-                <Button type="submit" variant="gradient" size="lg" className="w-full">
-                  Accedi
+                <Button 
+                  type="submit" 
+                  variant="gradient" 
+                  size="lg" 
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? 'Accesso in corso...' : 'Accedi'}
                 </Button>
               </form>
             </TabsContent>
@@ -101,6 +155,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -108,14 +163,22 @@ const Login = () => {
                   <Input
                     id="signup-password"
                     type="password"
+                    placeholder="Minimo 6 caratteri"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
+                    disabled={loading}
                   />
                 </div>
-                <Button type="submit" variant="gradient" size="lg" className="w-full">
-                  Crea Account
+                <Button 
+                  type="submit" 
+                  variant="gradient" 
+                  size="lg" 
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? 'Registrazione in corso...' : 'Crea Account'}
                 </Button>
               </form>
             </TabsContent>

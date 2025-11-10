@@ -1,15 +1,14 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import {
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { 
   User,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
-} from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { useToast } from "@/hooks/use-toast";
-import { UserRole, UserProfile } from "@/types/user";
+  onAuthStateChanged
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { UserProfile } from '@/types/user'; // usa la tua tipizzazione se disponibile
 
 interface AuthContextType {
   user: User | null;
@@ -23,81 +22,83 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
-  useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    setUser(user);
-
-    if (user) {
-      try {
-        const profileRef = doc(db, "userProfiles", user.uid);
-        const profileSnap = await getDoc(profileRef);
-        setUserProfile(profileSnap.exists() ? (profileSnap.data() as UserProfile) : null);
-      } catch (err) {
-        console.error("Errore caricando il profilo utente:", err);
+  const loadUserProfile = async (uid: string) => {
+    try {
+      const docRef = doc(db, 'userProfiles', uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        setUserProfile({ id: docSnap.id, ...(docSnap.data() as UserProfile) });
+      } else {
+        console.warn('Profilo utente non trovato');
         setUserProfile(null);
       }
-    } else {
+    } catch (error) {
+      console.error('Errore caricando il profilo utente:', error);
       setUserProfile(null);
     }
+  };
 
-    setLoading(false);
-  });
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      
+      if (user) {
+        await loadUserProfile(user.uid);
+      } else {
+        setUserProfile(null);
+      }
+      
+      setLoading(false);
+    });
 
-  return unsubscribe;
-}, []);
+    return unsubscribe;
+  }, []);
 
-
-
-  const login = async (email: string, password: string) => {
+  const signup = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: "Login effettuato",
-        description: "Benvenuto!",
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      await setDoc(doc(db, 'userProfiles', userCredential.user.uid), {
+        email,
+        role: 'user',
+        companyIds: [],
+        siteIds: [],
+        createdAt: new Date(),
+        displayName: email.split('@')[0],
       });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Errore login",
-        description: error.message,
-      });
+
+      await loadUserProfile(userCredential.user.uid);
+      
+    } catch (error) {
+      console.error('Errore durante la registrazione:', error);
       throw error;
     }
   };
 
-
-  const signup = async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      const tempAuth = auth;
-      const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
-
-      await signOut(tempAuth);
-
-      const userProfileData: UserProfile = {
-        userId: userCredential.user.uid,
-        email: userCredential.user.email || email,
-        role: "user" as UserRole,
-      };
-      await setDoc(doc(db, "userProfiles", userCredential.user.uid), userProfileData);
-
-      toast({
-        title: "Utente creato",
-        description: "Account creato con successo (resti loggato come admin).",
-      });
-
-      await signInWithEmailAndPassword(auth, user?.email || "", "");
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Errore registrazione",
-        description: error.message,
-      });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await loadUserProfile(userCredential.user.uid);
+    } catch (error) {
+      console.error('Errore durante il login:', error);
       throw error;
     }
   };
@@ -105,31 +106,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await signOut(auth);
-      toast({
-        title: "Logout effettuato",
-        description: "A presto!",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Errore logout",
-        description: error.message,
-      });
+      setUserProfile(null);
+    } catch (error) {
+      console.error('Errore durante il logout:', error);
       throw error;
     }
   };
 
-  const isSuperAdmin = userProfile?.role === "super_admin";
+  const isSuperAdmin = userProfile?.role === 'super_admin';
+
+  const value = {
+    user,
+    userProfile,
+    loading,
+    isSuperAdmin,
+    login,
+    signup,
+    logout,
+  };
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, isSuperAdmin, login, signup, logout }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
-}
+};

@@ -320,7 +320,7 @@ export default function SiteAnalysis({
                 variant="outline"
                 role="combobox"
                 aria-expanded={openCompany}
-                className="w-full sm:w-[250px] justify-between"
+                className="w-full sm:w-[300px] justify-between"
               >
                 {selectedCompany === "all"
                   ? "Tutte le aziende"
@@ -383,16 +383,20 @@ export default function SiteAnalysis({
                 variant="outline"
                 role="combobox"
                 aria-expanded={openSite}
-                className="w-full sm:w-[250px] justify-between"
+                className="w-full sm:w-[300px] justify-between"
                 disabled={filteredSites.length === 0}
               >
                 {selectedSite === "all"
                   ? "Tutte le sedi"
-                  : allSites.find((s) => s.id === selectedSite)?.name || selectedSite}
+                  : (() => {
+                      const site = allSites.find((s) => s.id === selectedSite);
+                      const company = companies.find((c) => c.id === site?.companyId);
+                      return site && company ? `${site.name} - ${company.name}` : selectedSite;
+                    })()}
                 <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-full sm:w-[250px] p-0">
+            <PopoverContent className="w-full sm:w-[300px] p-0">
               <Command>
                 <CommandInput placeholder="Cerca sede..." />
                 <CommandList>
@@ -413,24 +417,27 @@ export default function SiteAnalysis({
                       />
                       Tutte
                     </CommandItem>
-                    {filteredSites.map((s) => (
-                      <CommandItem
-                        key={s.id}
-                        value={s.id}
-                        onSelect={(v) => {
-                          setSelectedSite(v);
-                          setOpenSite(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            selectedSite === s.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {s.name}
-                      </CommandItem>
-                    ))}
+                    {filteredSites.map((s) => {
+                      const company = companies.find((c) => c.id === s.companyId);
+                      return (
+                        <CommandItem
+                          key={s.id}
+                          value={s.id}
+                          onSelect={(v) => {
+                            setSelectedSite(v);
+                            setOpenSite(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedSite === s.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {company ? `${s.name} - ${company.name}` : s.name}
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 </CommandList>
               </Command>

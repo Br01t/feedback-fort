@@ -420,120 +420,137 @@ const Dashboard = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                <Popover open={openCompany} onOpenChange={setOpenCompany}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full sm:w-auto justify-between gap-2 bg-background/50 hover:bg-background"
-                      disabled={availableCompanies.length === 1} // disattivo se c’è solo una
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <Building2 className="h-3.5 w-3.5" />
-                        <span className="text-xs">
-                          {availableCompanies.find(
-                            (c) => c.id === selectedCompanyId
-                          )?.name || "Seleziona azienda"}
-                        </span>
-                      </div>
-                      {availableCompanies.length > 1 && (
-                        <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  {availableCompanies.length > 1 && (
-                    <PopoverContent
-                      className="w-[240px] p-0 bg-background z-50"
-                      align="start"
-                    >
-                      <Command>
-                        <CommandInput placeholder="Cerca azienda..." />
-                        <CommandList>
-                          <CommandEmpty>Nessuna azienda trovata.</CommandEmpty>
-                          <CommandGroup>
-                            {availableCompanies.map((company) => (
-                              <CommandItem
-                                key={company.id}
-                                value={company.id}
-                                onSelect={() => {
-                                  setSelectedCompanyId(company.id);
-                                  setOpenCompany(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedCompanyId === company.id
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                {company.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  )}
-                </Popover>
+                {availableCompanies.length === 0 ? (
+                  <div className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-center">
+                    Nessuna azienda assegnata.{" "}
+                    <br className="hidden sm:block" />
+                    Contatta il responsabile per l’abilitazione.
+                  </div>
+                ) : (
+                  <Popover open={openCompany} onOpenChange={setOpenCompany}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto justify-between gap-2 bg-background/50 hover:bg-background"
+                        disabled={availableCompanies.length === 1}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="h-3.5 w-3.5" />
+                          <span className="text-xs">
+                            {availableCompanies.find(
+                              (c) => c.id === selectedCompanyId
+                            )?.name || "Seleziona azienda"}
+                          </span>
+                        </div>
+                        {availableCompanies.length > 1 && (
+                          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    {availableCompanies.length > 1 && (
+                      <PopoverContent
+                        className="w-[240px] p-0 bg-background z-50"
+                        align="start"
+                      >
+                        <Command>
+                          <CommandInput placeholder="Cerca azienda..." />
+                          <CommandList>
+                            <CommandEmpty>
+                              Nessuna azienda trovata.
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {availableCompanies.map((company) => (
+                                <CommandItem
+                                  key={company.id}
+                                  value={company.id}
+                                  onSelect={() => {
+                                    setSelectedCompanyId(company.id);
+                                    setOpenCompany(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedCompanyId === company.id
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {company.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    )}
+                  </Popover>
+                )}
 
-                <Popover open={openSite} onOpenChange={setOpenSite}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full sm:w-auto justify-between gap-2 bg-background/50 hover:bg-background"
-                      disabled={availableSites.length === 1} // disattivo se unica sede
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5" />
-                        <span className="text-xs">
-                          {availableSites.find((s) => s.id === selectedSiteId)
-                            ?.name || "Seleziona sede"}
-                        </span>
-                      </div>
-                      {availableSites.length > 1 && (
-                        <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  {availableSites.length > 1 && (
-                    <PopoverContent
-                      className="w-[240px] p-0 bg-background z-50"
-                      align="start"
-                    >
-                      <Command>
-                        <CommandInput placeholder="Cerca sede..." />
-                        <CommandList>
-                          <CommandEmpty>Nessuna sede trovata.</CommandEmpty>
-                          <CommandGroup>
-                            {availableSites.map((site) => (
-                              <CommandItem
-                                key={site.id}
-                                value={site.id}
-                                onSelect={() => {
-                                  setSelectedSiteId(site.id);
-                                  setOpenSite(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedSiteId === site.id
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                {site.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  )}
-                </Popover>
+                {availableSites.length === 0 ? (
+                  <div className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-center">
+                    Nessuna sede assegnata. <br className="hidden sm:block" />
+                    Contatta il responsabile per l’abilitazione.
+                  </div>
+                ) : (
+                  <Popover open={openSite} onOpenChange={setOpenSite}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto justify-between gap-2 bg-background/50 hover:bg-background"
+                        disabled={availableSites.length === 1}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span className="text-xs">
+                            {availableSites.find((s) => s.id === selectedSiteId)
+                              ?.name || "Seleziona sede"}
+                          </span>
+                        </div>
+                        {availableSites.length > 1 && (
+                          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    {availableSites.length > 1 && (
+                      <PopoverContent
+                        className="w-[240px] p-0 bg-background z-50"
+                        align="start"
+                      >
+                        <Command>
+                          <CommandInput placeholder="Cerca sede..." />
+                          <CommandList>
+                            <CommandEmpty>Nessuna sede trovata.</CommandEmpty>
+                            <CommandGroup>
+                              {availableSites.map((site) => (
+                                <CommandItem
+                                  key={site.id}
+                                  value={site.id}
+                                  onSelect={() => {
+                                    setSelectedSiteId(site.id);
+                                    setOpenSite(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedSiteId === site.id
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {site.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    )}
+                  </Popover>
+                )}
               </div>
             </div>
           </div>

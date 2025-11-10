@@ -1,14 +1,20 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import {
   User,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { UserProfile } from '@/types/user'; // usa la tua tipizzazione se disponibile
+  onAuthStateChanged,
+} from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { UserProfile } from "@/types/user"; // usa la tua tipizzazione se disponibile
 
 interface AuthContextType {
   user: User | null;
@@ -25,7 +31,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -41,31 +47,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const loadUserProfile = async (uid: string) => {
     try {
-      const docRef = doc(db, 'userProfiles', uid);
+      const docRef = doc(db, "userProfiles", uid);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         setUserProfile({ id: docSnap.id, ...(docSnap.data() as UserProfile) });
       } else {
-        console.warn('Profilo utente non trovato');
+        console.warn("Profilo utente non trovato");
         setUserProfile(null);
       }
     } catch (error) {
-      console.error('Errore caricando il profilo utente:', error);
+      console.error("Errore caricando il profilo utente:", error);
       setUserProfile(null);
     }
   };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
+      setUserProfile(null);
       setUser(user);
-      
+
       if (user) {
         await loadUserProfile(user.uid);
-      } else {
-        setUserProfile(null);
       }
-      
+
       setLoading(false);
     });
 
@@ -74,46 +80,62 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signup = async (email: string, password: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      await setDoc(doc(db, 'userProfiles', userCredential.user.uid), {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
         email,
-        role: 'user',
+        password
+      );
+
+      await setDoc(doc(db, "userProfiles", userCredential.user.uid), {
+        email,
+        role: "user",
         companyIds: [],
         siteIds: [],
         createdAt: new Date(),
-        displayName: email.split('@')[0],
+        displayName: email.split("@")[0],
       });
 
       await loadUserProfile(userCredential.user.uid);
-      
     } catch (error) {
-      console.error('Errore durante la registrazione:', error);
+      console.error("Errore durante la registrazione:", error);
       throw error;
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      setUserProfile(null);
+      setUser(null);
+      setLoading(true);
+
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
       await loadUserProfile(userCredential.user.uid);
+      setUser(userCredential.user);
     } catch (error) {
-      console.error('Errore durante il login:', error);
+      console.error("Errore durante il login:", error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
-      await signOut(auth);
       setUserProfile(null);
+      setUser(null);
+      await signOut(auth);
     } catch (error) {
-      console.error('Errore durante il logout:', error);
+      console.error("Errore durante il logout:", error);
       throw error;
     }
   };
 
-  const isSuperAdmin = userProfile?.role === 'super_admin';
+  const isSuperAdmin = userProfile?.role === "super_admin";
 
   const value = {
     user,

@@ -153,9 +153,12 @@ export default function CompanyAnalysis({
       let data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Company[];
       
       // Filtra le aziende in base ai permessi utente
-      if (!isSuperAdmin && userProfile?.companyId) {
-        data = data.filter(company => company.id === userProfile.companyId);
+      if (!isSuperAdmin) {
+        // Per utenti normali, mostra solo le aziende assegnate
+        const userCompanyIds = userProfile?.companyIds || [];
+        data = data.filter(company => userCompanyIds.includes(company.id));
       }
+      // Per super_admin, mostra tutte le aziende (nessun filtro)
       
       setCompanies(data);
     } catch (err) {

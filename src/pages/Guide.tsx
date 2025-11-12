@@ -194,7 +194,7 @@ const Guide = () => {
           </CardHeader>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground mb-4">
-              I dati presenti sono <span className="font-semibold">fittizzi e casuali</span>, inseriti durante lo sviluppo 
+              I dati presenti sono <span className="font-semibold">fittizi e casuali</span>, inseriti durante lo sviluppo 
               per verificare le funzionalità, ma consentono già di testare:
             </p>
             <ul className="space-y-2">

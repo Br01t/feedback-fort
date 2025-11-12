@@ -85,33 +85,26 @@ const FULL_QUESTIONS: { id: string; label: string }[] = [
   { id: "meta_reparto", label: "Ufficio / Reparto" },
   { id: "1.1", label: "1.1 Ore di lavoro settimanali a VDT (abituali)" },
   { id: "1.2", label: "1.2 Pause/cambi attività 15' ogni 120' (SI/NO)" },
-  // { id: "1.2_note", label: "1.2 - Necessità di intervento (note)" },
   { id: "1.3", label: "1.3 Tipo di lavoro prevalente" },
   { id: "1.4", label: "1.4 Informazione al lavoratore per uso VDT (SI/NO)" },
-  // { id: "1.4_note", label: "1.4 - Necessità di intervento (note)" },
   { id: "2.1", label: "2.1 Modalità ricambio aria (naturale/artificiale)" },
   { id: "2.2", label: "2.2 Possibilità di regolare la temperatura" },
   { id: "2.3", label: "2.3 Possibilità di regolare l'umidità" },
   { id: "2.4", label: "2.4 Eccesso di calore dalle attrezzature (SI/NO)" },
-  // { id: "2.4_note", label: "2.4 - Necessità di intervento (note)" },
   { id: "3.1", label: "3.1 Tipo di luce (naturale/artificiale/mista)" },
   { id: "3.2_nat", label: "3.2 - Regolazione luce naturale" },
   { id: "3.2_art", label: "3.2 - Regolazione luce artificiale" },
   { id: "3.3", label: "3.3 Posizione rispetto alla sorgente naturale" },
-  // { id: "3_note", label: "3 - Necessità di intervento (note)" },
   { id: "4.1", label: "4.1 Eventuale misura rumore (dB(A))" },
   { id: "4.2", label: "4.2 Disturbo attenzione/comunicazione (SI/NO)" },
-  // { id: "4_note", label: "4 - Necessità di intervento (note)" },
   { id: "5.1", label: "5.1 Spazio di lavoro/manovra adeguato (SI/NO)" },
   { id: "5.2", label: "5.2 Percorsi liberi da ostacoli (SI/NO)" },
-  // { id: "5_note", label: "5 - Necessità di intervento (note)" },
   { id: "6.1", label: "6.1 Superficie del piano adeguata (SI/NO)" },
   { id: "6.2", label: "6.2 Altezza del piano 70-80cm (SI/NO)" },
   {
     id: "6.3",
     label: "6.3 Dimensioni/disposizione schermo/tastiera/mouse (SI/NO)",
   },
-  // { id: "6_note", label: "6 - Necessità di intervento (note)" },
   { id: "7.1", label: "7.1 Altezza sedile regolabile" },
   { id: "7.2", label: "7.2 Inclinazione sedile regolabile" },
   { id: "7.3", label: "7.3 Schienale con supporto dorso-lombare" },
@@ -121,19 +114,15 @@ const FULL_QUESTIONS: { id: string; label: string }[] = [
     label: "7.5 Schienale/seduta bordi smussati/materiali appropriati",
   },
   { id: "7.6", label: "7.6 Presenza di ruote/meccanismo spostamento" },
-  // { id: "7_note", label: "7 - Necessità di intervento (note)" },
   { id: "8.1", label: "8.1 Monitor orientabile/inclinabile" },
   { id: "8.2", label: "8.2 Immagine stabile, senza sfarfallio" },
   { id: "8.3", label: "8.3 Risoluzione/luminosità regolabili" },
   { id: "8.4", label: "8.4 Contrasto/luminosità adeguati" },
   { id: "8.5", label: "8.5 Presenza di riflessi o riverberi" },
-  // { id: "8.6", label: "8.6 Note su posizione dello schermo" },
-  // { id: "8_note", label: "8 - Necessità di intervento (note)" },
   { id: "9.1", label: "9.1 Tastiera e mouse separati dallo schermo" },
   { id: "9.2", label: "9.2 Tastiera inclinabile" },
   { id: "9.3", label: "9.3 Spazio per appoggiare avambracci" },
   { id: "9.4", label: "9.4 Simboli/tasti leggibili" },
-  // { id: "9_note", label: "9 - Necessità di intervento (note)" },
   { id: "10_note", label: "10 - Osservazioni (note)" },
 ];
 
@@ -161,6 +150,9 @@ const Dashboard = () => {
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
   const [openCompany, setOpenCompany] = useState(false);
   const [openSite, setOpenSite] = useState(false);
+  
+  const ALL_COMPANIES_ID = "__ALL_COMPANIES__";
+  const ALL_SITES_ID = "__ALL_SITES__";
 
   useEffect(() => {
     if (!user) {
@@ -185,6 +177,17 @@ const Dashboard = () => {
       availableCompanies.length &&
       availableSites.length
     ) {
+      // Non salvare in localStorage se sono selezionate "tutte"
+      if (
+        selectedCompanyId === ALL_COMPANIES_ID ||
+        selectedSiteId === ALL_SITES_ID
+      ) {
+        console.log(
+          "⚠️ [Dashboard] Skipping save: 'Tutte' selezionato"
+        );
+        return;
+      }
+
       const selectedCompany = availableCompanies.find(
         (c) => c.id === selectedCompanyId
       );
@@ -230,7 +233,7 @@ const Dashboard = () => {
       setAvailableCompanies(companies);
 
       if (companies.length > 0) {
-        const defaultCompany = companies[0].id;
+        const defaultCompany = isSuperAdmin ? ALL_COMPANIES_ID : companies[0].id;
         setSelectedCompanyId(defaultCompany);
       } else {
         setSelectedCompanyId("");
@@ -250,7 +253,9 @@ const Dashboard = () => {
         ...doc.data(),
       })) as CompanySite[];
 
-      sites = sites.filter((s) => s.companyId === companyId);
+      if (companyId !== ALL_COMPANIES_ID) {
+        sites = sites.filter((s) => s.companyId === companyId);
+      }
 
       if (!isSuperAdmin) {
         const allowedSiteIds: string[] = userProfile?.siteIds || [];
@@ -263,7 +268,7 @@ const Dashboard = () => {
       setAvailableSites(sites);
 
       if (sites.length > 0) {
-        const defaultSite = sites[0].id;
+        const defaultSite = isSuperAdmin ? ALL_SITES_ID : sites[0].id;
         setSelectedSiteId(defaultSite);
       } else {
         setSelectedSiteId("");
@@ -309,11 +314,11 @@ const Dashboard = () => {
   const filteredResponses = useMemo(() => {
     let filtered = responses;
 
-    if (selectedCompanyId) {
+    if (selectedCompanyId && selectedCompanyId !== ALL_COMPANIES_ID) {
       filtered = filtered.filter((r) => r.companyId === selectedCompanyId);
     }
 
-    if (selectedSiteId) {
+    if (selectedSiteId && selectedSiteId !== ALL_SITES_ID) {
       filtered = filtered.filter((r) => r.siteId === selectedSiteId);
     }
 
@@ -440,7 +445,7 @@ const Dashboard = () => {
                   <div className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-center">
                     Nessuna azienda assegnata.{" "}
                     <br className="hidden sm:block" />
-                    Contatta il responsabile per l’abilitazione.
+                    Contatta il responsabile per l'abilitazione.
                   </div>
                 ) : (
                   <Popover open={openCompany} onOpenChange={setOpenCompany}>
@@ -449,65 +454,79 @@ const Dashboard = () => {
                         variant="outline"
                         size="sm"
                         className="w-full sm:w-auto justify-between gap-2 bg-background/50 hover:bg-background"
-                        disabled={availableCompanies.length === 1}
                       >
                         <div className="flex items-center gap-1.5">
                           <Building2 className="h-3.5 w-3.5" />
                           <span className="text-xs">
-                            {availableCompanies.find(
-                              (c) => c.id === selectedCompanyId
-                            )?.name || "Seleziona azienda"}
+                            {selectedCompanyId === ALL_COMPANIES_ID
+                              ? "Tutte le aziende"
+                              : availableCompanies.find(
+                                  (c) => c.id === selectedCompanyId
+                                )?.name || "Seleziona azienda"}
                           </span>
                         </div>
-                        {availableCompanies.length > 1 && (
-                          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                        )}
+                        <ChevronDown className="h-3.5 w-3.5 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    {availableCompanies.length > 1 && (
-                      <PopoverContent
-                        className="w-[240px] p-0 bg-background z-50"
-                        align="start"
-                      >
-                        <Command>
-                          <CommandInput placeholder="Cerca azienda..." />
-                          <CommandList>
-                            <CommandEmpty>
-                              Nessuna azienda trovata.
-                            </CommandEmpty>
-                            <CommandGroup>
-                              {availableCompanies.map((company) => (
-                                <CommandItem
-                                  key={company.id}
-                                  value={company.id}
-                                  onSelect={() => {
-                                    setSelectedCompanyId(company.id);
-                                    setOpenCompany(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedCompanyId === company.id
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    )}
-                                  />
-                                  {company.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    )}
+                    <PopoverContent
+                      className="w-[240px] p-0 bg-background z-50"
+                      align="start"
+                    >
+                      <Command>
+                        <CommandInput placeholder="Cerca azienda..." />
+                        <CommandList>
+                          <CommandEmpty>Nessuna azienda trovata.</CommandEmpty>
+                          <CommandGroup>
+                            {isSuperAdmin && (
+                              <CommandItem
+                                value={ALL_COMPANIES_ID}
+                                onSelect={() => {
+                                  setSelectedCompanyId(ALL_COMPANIES_ID);
+                                  setOpenCompany(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedCompanyId === ALL_COMPANIES_ID
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                Tutte le aziende
+                              </CommandItem>
+                            )}
+                            {availableCompanies.map((company) => (
+                              <CommandItem
+                                key={company.id}
+                                value={company.id}
+                                onSelect={() => {
+                                  setSelectedCompanyId(company.id);
+                                  setOpenCompany(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedCompanyId === company.id
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {company.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
                   </Popover>
                 )}
 
                 {availableSites.length === 0 ? (
                   <div className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-center">
                     Nessuna sede assegnata. <br className="hidden sm:block" />
-                    Contatta il responsabile per l’abilitazione.
+                    Contatta il responsabile per l'abilitazione.
                   </div>
                 ) : (
                   <Popover open={openSite} onOpenChange={setOpenSite}>
@@ -516,55 +535,71 @@ const Dashboard = () => {
                         variant="outline"
                         size="sm"
                         className="w-full sm:w-auto justify-between gap-2 bg-background/50 hover:bg-background"
-                        disabled={availableSites.length === 1}
                       >
                         <div className="flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5" />
                           <span className="text-xs">
-                            {availableSites.find((s) => s.id === selectedSiteId)
-                              ?.name || "Seleziona sede"}
+                            {selectedSiteId === ALL_SITES_ID
+                              ? "Tutte le sedi"
+                              : availableSites.find((s) => s.id === selectedSiteId)
+                                  ?.name || "Seleziona sede"}
                           </span>
                         </div>
-                        {availableSites.length > 1 && (
-                          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                        )}
+                        <ChevronDown className="h-3.5 w-3.5 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    {availableSites.length > 1 && (
-                      <PopoverContent
-                        className="w-[240px] p-0 bg-background z-50"
-                        align="start"
-                      >
-                        <Command>
-                          <CommandInput placeholder="Cerca sede..." />
-                          <CommandList>
-                            <CommandEmpty>Nessuna sede trovata.</CommandEmpty>
-                            <CommandGroup>
-                              {availableSites.map((site) => (
-                                <CommandItem
-                                  key={site.id}
-                                  value={site.id}
-                                  onSelect={() => {
-                                    setSelectedSiteId(site.id);
-                                    setOpenSite(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedSiteId === site.id
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    )}
-                                  />
-                                  {site.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    )}
+                    <PopoverContent
+                      className="w-[240px] p-0 bg-background z-50"
+                      align="start"
+                    >
+                      <Command>
+                        <CommandInput placeholder="Cerca sede..." />
+                        <CommandList>
+                          <CommandEmpty>Nessuna sede trovata.</CommandEmpty>
+                          <CommandGroup>
+                            {isSuperAdmin && (
+                              <CommandItem
+                                value={ALL_SITES_ID}
+                                onSelect={() => {
+                                  setSelectedSiteId(ALL_SITES_ID);
+                                  setOpenSite(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedSiteId === ALL_SITES_ID
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                Tutte le sedi
+                              </CommandItem>
+                            )}
+                            {availableSites.map((site) => (
+                              <CommandItem
+                                key={site.id}
+                                value={site.id}
+                                onSelect={() => {
+                                  setSelectedSiteId(site.id);
+                                  setOpenSite(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedSiteId === site.id
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {site.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
                   </Popover>
                 )}
               </div>
@@ -713,68 +748,29 @@ const Dashboard = () => {
         ) : (
           <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* {satisfactionData.length > 0 && (
-                <Card className="shadow-lg border-2">
-                  <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-transparent">
-                    <CardTitle className="text-xl">
-                      Soddisfazione Generale
-                    </CardTitle>
-                    <CardDescription>
-                      Distribuzione delle risposte per livello di soddisfazione
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie
-                          data={satisfactionData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={90}
-                          dataKey="value"
-                          label={({ name, percent }) =>
-                            `${name}: ${(percent * 100).toFixed(0)}%`
-                          }
-                        >
-                          {satisfactionData.map((_, i) => (
-                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )} */}
-
               <Card className="shadow-lg border-2">
                 <CardHeader className="border-b bg-gradient-to-r from-accent/5 to-transparent">
                   <CardTitle className="text-xl">
                     Distibuzione Questionari attivi per Settore
                   </CardTitle>
-                  {/* <CardDescription>
-                    Valutazione complessiva su scala 0-100
-                  </CardDescription> */}
                 </CardHeader>
                 <CardContent>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={responsesBySector}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis allowDecimals={false} />
-                          <Tooltip />
-                          <Bar dataKey="count" fill={COLORS[0]}>
-                            {responsesBySector.map((_, i) => (
-                              <Cell
-                                key={`cell-${i}`}
-                                fill={COLORS[i % COLORS.length]}
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                      <BarChart data={responsesBySector}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill={COLORS[0]}>
+                          {responsesBySector.map((_, i) => (
+                            <Cell
+                              key={`cell-${i}`}
+                              fill={COLORS[i % COLORS.length]}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
